@@ -54,6 +54,43 @@ def _handle_leader_error(leaders_res, leader_fn) -> bool:
         return False
 
 
+def _fetch_evidence(uri: str) -> str:
+    try:
+        response = gl.nondet.web.get(uri)
+        if response.status >= 500:
+            raise gl.vm.UserError(f"{ERROR_TRANSIENT} evidence source unavailable")
+        if response.status >= 400:
+            raise gl.vm.UserError(f"{ERROR_EXTERNAL} evidence source rejected")
+        body = response.body.decode("utf-8", errors="ignore")
+        if not body.strip():
+            raise gl.vm.UserError(f"{ERROR_EXTERNAL} empty evidence")
+        return body[:MAX_EVIDENCE_BYTES]
+    except gl.vm.UserError:
+        raise
+    except Exception:
+        raise gl.vm.UserError(f"{ERROR_TRANSIENT} evidence fetch failed")
+
+
+def _normalize_assessment(raw: dict) -> dict:
+    if not isinstance(raw, dict):
+        raise gl.vm.UserError(f"{ERROR_LLM} non-object response")
+    verdict = str(raw.get("verdict", "inconclusive")).strip().lower()
+    risk_tier = str(raw.get("risk_tier", "medium")).strip().lower()
+    if verdict not in VERDICTS:
+        raise gl.vm.UserError(f"{ERROR_LLM} invalid verdict")
+    if risk_tier not in RISK_TIERS:
+        raise gl.vm.UserError(f"{ERROR_LLM} invalid risk tier")
+    return {
+        "verdict": verdict,
+        "risk_tier": risk_tier,
+        "confidence": _bounded_int(raw.get("confidence", 0), 0, 100),
+        "disputed_findings": _bounded_strings(
+            raw.get("disputed_findings", []), MAX_DISPUTED_FINDINGS, 300
+        ),
+        "explanation": str(raw.get("explanation", "")).strip()[:MAX_EXPLANATION_LENGTH],
+    }
+
+
 @allow_storage
 @dataclass
 class Attestation:
@@ -113,46 +150,11 @@ class ConsensusVerifier(gl.Contract):
             result.append(check.strip())
         return result
 
-    def _fetch_evidence(self, uri: str) -> str:
-        try:
-            response = gl.nondet.web.get(uri)
-            if response.status >= 500:
-                raise gl.vm.UserError(f"{ERROR_TRANSIENT} evidence source unavailable")
-            if response.status >= 400:
-                raise gl.vm.UserError(f"{ERROR_EXTERNAL} evidence source rejected")
-            body = response.body.decode("utf-8", errors="ignore")
-            if not body.strip():
-                raise gl.vm.UserError(f"{ERROR_EXTERNAL} empty evidence")
-            return body[:MAX_EVIDENCE_BYTES]
-        except gl.vm.UserError:
-            raise
-        except Exception:
-            raise gl.vm.UserError(f"{ERROR_TRANSIENT} evidence fetch failed")
-
-    def _normalize_assessment(self, raw: dict) -> dict:
-        if not isinstance(raw, dict):
-            raise gl.vm.UserError(f"{ERROR_LLM} non-object response")
-        verdict = str(raw.get("verdict", "inconclusive")).strip().lower()
-        risk_tier = str(raw.get("risk_tier", "medium")).strip().lower()
-        if verdict not in VERDICTS:
-            raise gl.vm.UserError(f"{ERROR_LLM} invalid verdict")
-        if risk_tier not in RISK_TIERS:
-            raise gl.vm.UserError(f"{ERROR_LLM} invalid risk tier")
-        return {
-            "verdict": verdict,
-            "risk_tier": risk_tier,
-            "confidence": _bounded_int(raw.get("confidence", 0), 0, 100),
-            "disputed_findings": _bounded_strings(
-                raw.get("disputed_findings", []), MAX_DISPUTED_FINDINGS, 300
-            ),
-            "explanation": str(raw.get("explanation", "")).strip()[:MAX_EXPLANATION_LENGTH],
-        }
-
     def _assess(self, report_hash: str, evidence_uri: str, task_type: str, checks: list[str]) -> dict:
         checks_json = json.dumps(checks, sort_keys=True, separators=(",", ":"))
 
         def leader_fn():
-            evidence = self._fetch_evidence(evidence_uri)
+            evidence = _fetch_evidence(evidence_uri)
             prompt = f"""You are a conservative consensus verifier for paid agent outputs.
 Use only the supplied evidence. Never invent facts or treat an assertion as evidence.
 
@@ -175,9 +177,7 @@ Return bounded JSON only:
   "disputed_findings": ["max 12 concise strings"],
   "explanation": "max 800 characters"
 }}"""
-            return self._normalize_assessment(
-                gl.nondet.exec_prompt(prompt, response_format="json")
-            )
+            return _normalize_assessment(gl.nondet.exec_prompt(prompt, response_format="json"))
 
         def validator_fn(leaders_res: gl.vm.Result) -> bool:
             if not isinstance(leaders_res, gl.vm.Return):

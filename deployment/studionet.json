@@ -1,0 +1,36 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "contract_address": "0x3895AEB8A2259729b954Dd7B27226f47230D231E",
+  "service_wallet": "0x5DC9080F23878117df370e93E52523312C0FC397",
+  "deployment_transaction": "0x7a40ae8d2638256ab2b651dcefd068250875ca67416f33d4a922e8dd491c7072",
+  "deployment_consensus": "MAJORITY_AGREE",
+  "verified_at": "2026-06-11",
+  "live_verification": {
+    "risk_assessment": {
+      "transaction": "0xa4ffe657831ac0830cf40bd7960ab25f6d8c2b16acfc990aad526dc765c020f6",
+      "attestation_id": "attestation-1",
+      "status": "ACCEPTED"
+    },
+    "content_verification": {
+      "transaction": "0xce60c8a25c6422a563225180a6cefccdb924e3fe82352065b15bbb689373609f",
+      "attestation_id": "attestation-2",
+      "status": "ACCEPTED"
+    },
+    "conflict_resolution": {
+      "transaction": "0x9a821c7300ae9f8a168ca6bdeeed09239c6634c73db0ddf7e661b93a05937150",
+      "attestation_id": "attestation-3",
+      "status": "ACCEPTED"
+    },
+    "worker_sdk_submission": {
+      "transaction": "0x00865d1eee6366494fec935ab8cdadcc899de331e8ab0925060ef2611652b688",
+      "attestation_id": "attestation-5",
+      "status": "ACCEPTED"
+    },
+    "unauthorized_submission": {
+      "transaction": "0x2dea172ef1ab49ec982a047bfeb1d7264831212ef7f497299f4ac0a438f87562",
+      "status": "REJECTED_BY_CONTRACT",
+      "reason": "only service wallet may submit"
+    }
+  }
+}
