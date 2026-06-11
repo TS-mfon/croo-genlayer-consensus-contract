@@ -1,0 +1,24 @@
+{
+  "report": {
+    "report_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "contract": "0x1111111111111111111111111111111111111111",
+    "chain": "base",
+    "findings": [
+      {
+        "id": "proxy_upgradeable",
+        "severity": "high",
+        "evidence": "The supplied source exposes an upgradeTo function restricted to an administrator."
+      },
+      {
+        "id": "emergency_withdraw",
+        "severity": "medium",
+        "evidence": "The supplied source exposes an emergency withdrawal capability."
+      }
+    ],
+    "risk_tier": "high"
+  },
+  "limitations": [
+    "This is a bounded public fixture for consensus verification testing.",
+    "It is not a professional security audit."
+  ]
+}
